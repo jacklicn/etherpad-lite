@@ -174,7 +174,6 @@ exports.createAuthor = async (name) => {
   };
 
   // set the global author db entry
-  // NB: no await, since we're not waiting for the DB set to finish
   await db.set(`globalAuthor:${author}`, authorObj);
 
   return {authorID: author};
