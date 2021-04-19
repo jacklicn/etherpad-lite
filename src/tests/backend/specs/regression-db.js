@@ -1,30 +1,31 @@
 'use strict';
 
-const assert = require('assert').strict;
-const db = require('../../../node/db/DB');
-const common = require('../common');
 const AuthorManager = require('../../../node/db/AuthorManager');
+const assert = require('assert').strict;
+const common = require('../common');
+const db = require('../../../node/db/DB');
 
-describe('regression test for missing await when calling db methods (#5000)', function () {
-  let tmp;
+describe(__filename, function () {
+  let setBackup;
+
   before(async function () {
     await common.init();
-    tmp = db.set;
+    setBackup = db.set;
+
     db.set = async (...args) => {
       // delay db.set
       await new Promise((resolve) => { setTimeout(() => resolve(), 500); });
-      tmp(...args);
+      return await setBackup.call(db, ...args);
     };
   });
 
   after(async function () {
-    db.set = tmp;
+    db.set = setBackup;
   });
 
-  it('createAuthor', async function () {
+  it('regression test for missing await in createAuthor (#5000)', async function () {
     this.timeout(700);
-    const author = await AuthorManager.createAuthor();
-    const authorFromDB = await db.get(`globalAuthor:${author.authorID}`);
-    assert.ok(authorFromDB);
+    const {authorID} = await AuthorManager.createAuthor(); // Should block until db.set() finishes.
+    assert(await AuthorManager.doesAuthorExist(authorID));
   });
 });
